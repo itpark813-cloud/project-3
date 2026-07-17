@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мировое приложение погоды</title>
+    <!-- Подключаем наш файл стилей -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="weather-container">
+        <h1>Погода во всем мире</h1>
+        
+        <!-- Блок поиска -->
+        <div class="search-box">
+            <input type="text" id="city-input" placeholder="Введите город (например: Tashkent)...">
+            <button id="search-btn">Искать</button>
+        </div>
+
+        <!-- Блок, куда будут выводиться данные из интернета -->
+        <div class="weather-info" id="weather-info">
+            <h2 id="city-name">Город</h2>
+            <div class="temp-box">
+                <span id="temperature">--</span>°C
+            </div>
+            <p id="description">Введите название города и нажмите поиск</p>
+            
+            <div class="details">
+                <div>Скорость ветра: <span id="wind">--</span> км/ч</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Подключаем нашу логику JavaScript -->
+    <script src="app.js"></script>
+</body>
+</html>
