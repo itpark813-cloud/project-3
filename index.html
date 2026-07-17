@@ -1,70 +1,550 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Premium Weather Dashboard</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Live Weather Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@300;400;500;700&family=Google+Sans+Flex:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0"></script>
+    <style>
+        :root {
+            --primary: #0b57d0;
+            --on-primary: #fff;
+            --surface: #fff;
+            --surface-container: #f0f4f9;
+            --on-surface-default: #1b1c1d;
+            --on-surface-de-emphasis: #444746;
+            --stroke-default: #dcdfe5;
+            --ff-sans: "Google Sans", sans-serif;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --primary: #a8c7fa;
+                --on-primary: #062e6f;
+                --surface: #101218;
+                --surface-container: #282a2c;
+                --on-surface-default: #fff;
+                --on-surface-de-emphasis: #c4c7c5;
+                --stroke-default: #2d2f38;
+            }
+        }
+
+        *, :after, :before {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body, html {
+            height: 100%;
+            overflow: hidden;
+            font-family: var(--ff-sans);
+            background: var(--surface);
+            color: var(--on-surface-default);
+        }
+
+        .app-layout {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            background: var(--surface);
+        }
+
+        .widget-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+        }
+
+        .widget-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--stroke-default);
+            background: var(--surface);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .widget-title {
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: var(--on-surface-default);
+        }
+
+        .viz-container {
+            flex: 1;
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow-y: auto;
+        }
+
+        .weather-card {
+            width: 100%;
+            max-width: 440px;
+            padding: 2rem;
+            border-radius: 24px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+            background: var(--surface-container);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--stroke-default);
+        }
+
+        .weather-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 8px;
+            height: 100%;
+            background: var(--accent-color, #78909C);
+            transition: background 0.5s ease;
+        }
+
+        .weather-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1.5rem;
+        }
+
+        .city-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .city-name {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--on-surface-default);
+        }
+
+        .country-name {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--on-surface-de-emphasis);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .weather-icon-container {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(8px);
+            color: var(--accent-color, #78909C);
+        }
+
+        .weather-icon-container .material-icons {
+            font-size: 2.25rem;
+        }
+
+        .weather-body {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 2rem;
+        }
+
+        .temp-display {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .temp-value {
+            font-size: 4rem;
+            font-weight: 700;
+            line-height: 1;
+            color: var(--accent-color, var(--on-surface-default));
+            transition: color 0.5s ease;
+        }
+
+        .feels-like {
+            font-size: 0.95rem;
+            color: var(--on-surface-de-emphasis);
+            margin-top: 4px;
+        }
+
+        .condition-text {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: var(--on-surface-default);
+            text-align: right;
+            max-width: 180px;
+        }
+
+        .weather-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            border-top: 1px solid var(--stroke-default);
+            padding-top: 1.5rem;
+        }
+
+        .grid-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .grid-icon {
+            color: var(--accent-color, var(--on-surface-de-emphasis));
+            font-size: 1.5rem;
+        }
+
+        .grid-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .grid-label {
+            font-size: 0.75rem;
+            color: var(--on-surface-de-emphasis);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .grid-val {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--on-surface-default);
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(var(--surface), 0.7);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            border-radius: 24px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .loading-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--stroke-default);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            display: none;
+            color: #d32f2f;
+            background: #ffebee;
+            border: 1px solid #ffcdd2;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            text-align: center;
+            margin-top: 1rem;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .error-message.active {
+            display: flex;
+        }
+    </style>
+    <script>
+      window['CALLER_ID'] = 'spark';
+    </script>
+    <script>
+        // This is a minimal fallback implementation of WH inside the preview window if the platform wrapper is active
+    </script>
 </head>
-<body>
+<body class="spark-widget-shell">
+    <div class="app-layout">
+        <div class="widget-container">
+            <!-- Dynamic Controls and Vis -->
+            <div id="viz" class="widget-ui-part viz-container">
+                <div class="weather-card" id="weather-card">
+                    <div class="loading-overlay" id="loading-overlay">
+                        <div class="spinner"></div>
+                    </div>
+                    
+                    <div class="weather-header">
+                        <div class="city-info">
+                            <span class="city-name" id="ui-city">Загрузка...</span>
+                            <span class="country-name" id="ui-country">-</span>
+                        </div>
+                        <div class="weather-icon-container" id="icon-bg">
+                            <span class="material-icons" id="ui-icon">cloud</span>
+                        </div>
+                    </div>
 
-    <!-- Задний фон с анимированными живыми кругами для эффекта глубины -->
-    <div class="bg-circles">
-        <div class="circle c1"></div>
-        <div class="circle c2"></div>
+                    <div class="weather-body">
+                        <div class="temp-display">
+                            <span class="temp-value" id="ui-temp">--°C</span>
+                            <span class="feels-like" id="ui-feels-like">Ощущается как: --°C</span>
+                        </div>
+                        <span class="condition-text" id="ui-condition">--</span>
+                    </div>
+
+                    <div class="weather-grid">
+                        <div class="grid-item">
+                            <span class="material-icons grid-icon">water_drop</span>
+                            <div class="grid-info">
+                                <span class="grid-label">Влажность</span>
+                                <span class="grid-val" id="ui-humidity">--%</span>
+                            </div>
+                        </div>
+                        <div class="grid-item">
+                            <span class="material-icons grid-icon">air</span>
+                            <div class="grid-info">
+                                <span class="grid-label">Ветер</span>
+                                <span class="grid-val" id="ui-wind">-- км/ч</span>
+                            </div>
+                        </div>
+                        <div class="grid-item">
+                            <span class="material-icons grid-icon">explore</span>
+                            <div class="grid-info">
+                                <span class="grid-label">Широта</span>
+                                <span class="grid-val" id="ui-lat">--</span>
+                            </div>
+                        </div>
+                        <div class="grid-item">
+                            <span class="material-icons grid-icon">map</span>
+                            <div class="grid-info">
+                                <span class="grid-label">Долгота</span>
+                                <span class="grid-val" id="ui-lon">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="error-message" id="error-box">
+                        <span class="material-icons">error_outline</span>
+                        <span id="error-text">Ошибка загрузки</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="weather-card">
-        <!-- Поиск -->
-        <div class="search-container">
-            <input type="text" id="city-input" placeholder="Введите город на английском (например: Tashkent)..." autocomplete="off">
-            <button id="search-btn">
-                <span class="btn-icon">🔍</span>
-            </button>
-        </div>
+    <script>
+        // Extensive WMO Weather Code Mapper to make condition texts accurate and beautiful
+        const WMO_MAPPING = {
+            0: { text: "Ясно / Sunny", color: "#FF9800", icon: "wb_sunny" },
+            1: { text: "Преимущественно ясно / Mainly Clear", color: "#FFC107", icon: "wb_cloudy" },
+            2: { text: "Переменная облачность / Partly Cloudy", color: "#90A4AE", icon: "cloud" },
+            3: { text: "Пасмурно / Overcast", color: "#78909C", icon: "cloud" },
+            45: { text: "Туман / Fog", color: "#90A4AE", icon: "blur_on" },
+            48: { text: "Ледяной туман / Depositing rime fog", color: "#90A4AE", icon: "blur_on" },
+            51: { text: "Легкая морось / Light drizzle", color: "#4FC3F7", icon: "grain" },
+            53: { text: "Морось / Moderate drizzle", color: "#29B6F6", icon: "grain" },
+            55: { text: "Плотная морось / Dense drizzle", color: "#0288D1", icon: "grain" },
+            61: { text: "Слабый дождь / Slight rain", color: "#42A5F5", icon: "umbrella" },
+            63: { text: "Умеренный дождь / Moderate rain", color: "#1E88E5", icon: "umbrella" },
+            65: { text: "Сильный дождь / Heavy rain", color: "#1565C0", icon: "umbrella" },
+            71: { text: "Слабый снегопад / Slight snow", color: "#26C6DA", icon: "ac_unit" },
+            73: { text: "Снегопад / Moderate snow", color: "#00ACC1", icon: "ac_unit" },
+            75: { text: "Сильный снегопад / Heavy snow", color: "#00838F", icon: "ac_unit" },
+            80: { text: "Слабый ливень / Slight showers", color: "#1976D2", icon: "shower" },
+            81: { text: "Ливневый дождь / Moderate showers", color: "#1565C0", icon: "shower" },
+            82: { text: "Сильный ливень / Violent showers", color: "#0D47A1", icon: "shower" },
+            95: { text: "Гроза / Thunderstorm", color: "#7E57C2", icon: "thunderstorm" },
+            96: { text: "Гроза с градом / Thunderstorm & hail", color: "#5E35B1", icon: "thunderstorm" },
+            99: { text: "Сильная гроза / Heavy thunderstorm", color: "#4527A0", icon: "thunderstorm" },
+        };
 
-        <!-- Главный экран погоды -->
-        <div class="main-weather animate-fade">
-            <div id="weather-emoji" class="weather-illustration">🌤️</div>
-            <h1 id="city-name">Global Weather</h1>
-            <div class="temp-display"><span id="temperature">--</span>°C</div>
-            <p id="weather-status">Введите город для сканирования</p>
-        </div>
+        const { state } = WH.createApp({
+            title: "Live Worldwide Weather Dashboard",
+            params: {
+                city: {
+                    type: "text",
+                    value: "Tashkent",
+                    label: "Поиск города / Search"
+                },
+                quick_select: {
+                    type: "select",
+                    value: "Tashkent",
+                    options: ["Tashkent", "Samarkand", "Urgench", "London", "New York", "Tokyo", "Paris", "Moscow"],
+                    label: "Популярные города"
+                }
+            },
+            internal_state: {
+                weatherData: null,
+                isLoading: false,
+                currentCity: "Tashkent",
+                errorMsg: ""
+            },
+            sizing: { viz: { height: 420 } },
+            editorial: {
+                hud: [
+                    { label: "Город", value: "Tashkent" },
+                    { label: "Температура", value: "--°C" },
+                    { label: "Условия", value: "--" }
+                ]
+            }
+        });
 
-        <!-- Дополнительные метрики (Сетка) -->
-        <div class="metrics-grid">
-            <div class="metric-item">
-                <span class="metric-icon">🌡️</span>
-                <div class="metric-info">
-                    <p class="metric-label">Ощущается как</p>
-                    <p class="metric-value"><span id="feels-like">--</span>°C</p>
-                </div>
-            </div>
-            <div class="metric-item">
-                <span class="metric-icon">💧</span>
-                <div class="metric-info">
-                    <p class="metric-label">Влажность</p>
-                    <p class="metric-value"><span id="humidity">--</span>%</p>
-                </div>
-            </div>
-            <div class="metric-item">
-                <span class="metric-icon">💨</span>
-                <div class="metric-info">
-                    <p class="metric-label">Ветер</p>
-                    <p class="metric-value"><span id="wind">--</span> км/ч</p>
-                </div>
-            </div>
-        </div>
+        async function fetchWeatherData(cityName) {
+            if (!cityName) return;
+            
+            // Set loading state
+            state.isLoading = true;
+            state.errorMsg = "";
+            updateDOM();
 
-        <!-- Блок прогноза на 3 дня -->
-        <div class="forecast-section">
-            <h3>Прогноз на 3 дня</h3>
-            <div class="forecast-container" id="forecast-container">
-                <!-- Сюда JS вставит карточки дней -->
-            </div>
-        </div>
-    </div>
+            try {
+                // 1. Geocode city name to fetch latitude & longitude (supports multiple languages!)
+                const geocodeUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=ru&format=json`;
+                const geoResponse = await fetch(geocodeUrl);
+                
+                if (!geoResponse.ok) {
+                    throw new Error("Не удалось получить координаты города.");
+                }
 
-    <script src="app.js"></script>
+                const geoData = await geoResponse.json();
+                
+                if (!geoData.results || geoData.results.length === 0) {
+                    throw new Error(`Город "${cityName}" не найден. Попробуйте ввести другое название.`);
+                }
+
+                const location = geoData.results[0];
+                const lat = location.latitude;
+                const lon = location.longitude;
+                const resolvedCity = location.name;
+                const country = location.country || "";
+
+                // 2. Fetch real live weather forecast from Open-Meteo for the resolved coordinates
+                const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=auto`;
+                const weatherResponse = await fetch(weatherUrl);
+
+                if (!weatherResponse.ok) {
+                    throw new Error("Не удалось загрузить метеосводку.");
+                }
+
+                const weatherData = await weatherResponse.json();
+                const current = weatherData.current;
+
+                // Sync gathered information back to the global reactive state
+                state.weatherData = {
+                    temp: Math.round(current.temperature_2m),
+                    feelsLike: Math.round(current.apparent_temperature),
+                    humidity: current.relative_humidity_2m,
+                    wind: Math.round(current.wind_speed_10m),
+                    code: current.weather_code,
+                    lat: lat.toFixed(4),
+                    lon: lon.toFixed(4),
+                    city: resolvedCity,
+                    country: country
+                };
+                
+                state.currentCity = resolvedCity;
+                state.isLoading = false;
+                updateDOM();
+
+            } catch (err) {
+                console.error(err);
+                state.errorMsg = err.message;
+                state.isLoading = false;
+                updateDOM();
+            }
+        }
+
+        function updateDOM() {
+            const card = document.getElementById("weather-card");
+            const overlay = document.getElementById("loading-overlay");
+            const errBox = document.getElementById("error-box");
+            const errText = document.getElementById("error-text");
+
+            // Toggle spinner loader overlay
+            if (state.isLoading) {
+                overlay.classList.add("active");
+            } else {
+                overlay.classList.remove("active");
+            }
+
+            // Display error banner if city search fails
+            if (state.errorMsg) {
+                errText.textContent = state.errorMsg;
+                errBox.classList.add("active");
+                return;
+            } else {
+                errBox.classList.remove("active");
+            }
+
+            // Bind values only when data exists
+            if (state.weatherData) {
+                const data = state.weatherData;
+                const condition = WMO_MAPPING[data.code] || { text: "Облачно", color: "#78909C", icon: "cloud" };
+
+                // Apply dynamically matching colored styling and borders
+                card.style.setProperty("--accent-color", condition.color);
+                
+                document.getElementById("ui-city").textContent = data.city;
+                document.getElementById("ui-country").textContent = data.country;
+                document.getElementById("ui-temp").textContent = `${data.temp}°C`;
+                document.getElementById("ui-feels-like").textContent = `Ощущается как: ${data.feelsLike}°C`;
+                document.getElementById("ui-condition").textContent = condition.text;
+                document.getElementById("ui-humidity").textContent = `${data.humidity}%`;
+                document.getElementById("ui-wind").textContent = `${data.wind} км/ч`;
+                document.getElementById("ui-lat").textContent = data.lat;
+                document.getElementById("ui-lon").textContent = data.lon;
+                
+                // Update modern icon and background colors
+                const iconElement = document.getElementById("ui-icon");
+                iconElement.textContent = condition.icon;
+                
+                // Update platform editorial block for top-level readability
+                ui.setEditorial({
+                    hud: [
+                        { label: "Город", value: data.city },
+                        { label: "Температура", value: `${data.temp}°C` },
+                        { label: "Условия", value: condition.text.split(" / ")[0] }
+                    ]
+                });
+            }
+        }
+
+        state._subscribe('city', (newCity) => {
+            if (newCity && newCity !== state.currentCity) {
+                fetchWeatherData(newCity);
+            }
+        });
+
+        state._subscribe('quick_select', (cityOption) => {
+            if (cityOption) {
+                state.city = cityOption; // Sync text input with selected choice
+                fetchWeatherData(cityOption);
+            }
+        });
+
+        // Trigger initial data load for Tashkent
+        fetchWeatherData("Tashkent");
+    </script>
 </body>
 </html>
