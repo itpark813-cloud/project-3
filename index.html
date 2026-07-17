@@ -3,36 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мировое приложение погоды</title>
-    <!-- Подключаем наш файл стилей -->
+    <title>Premium Weather Dashboard</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div class="weather-container">
-        <h1>Погода во всем мире</h1>
-        
-        <!-- Блок поиска -->
-        <div class="search-box">
-            <input type="text" id="city-input" placeholder="Введите город (например: Tashkent)...">
-            <button id="search-btn">Искать</button>
+    <!-- Задний фон с анимированными живыми кругами для эффекта глубины -->
+    <div class="bg-circles">
+        <div class="circle c1"></div>
+        <div class="circle c2"></div>
+    </div>
+
+    <div class="weather-card">
+        <!-- Поиск -->
+        <div class="search-container">
+            <input type="text" id="city-input" placeholder="Введите город на английском (например: Tashkent)..." autocomplete="off">
+            <button id="search-btn">
+                <span class="btn-icon">🔍</span>
+            </button>
         </div>
 
-        <!-- Блок, куда будут выводиться данные из интернета -->
-        <div class="weather-info" id="weather-info">
-            <h2 id="city-name">Город</h2>
-            <div class="temp-box">
-                <span id="temperature">--</span>°C
+        <!-- Главный экран погоды -->
+        <div class="main-weather animate-fade">
+            <div id="weather-emoji" class="weather-illustration">🌤️</div>
+            <h1 id="city-name">Global Weather</h1>
+            <div class="temp-display"><span id="temperature">--</span>°C</div>
+            <p id="weather-status">Введите город для сканирования</p>
+        </div>
+
+        <!-- Дополнительные метрики (Сетка) -->
+        <div class="metrics-grid">
+            <div class="metric-item">
+                <span class="metric-icon">🌡️</span>
+                <div class="metric-info">
+                    <p class="metric-label">Ощущается как</p>
+                    <p class="metric-value"><span id="feels-like">--</span>°C</p>
+                </div>
             </div>
-            <p id="description">Введите название города и нажмите поиск</p>
-            
-            <div class="details">
-                <div>Скорость ветра: <span id="wind">--</span> км/ч</div>
+            <div class="metric-item">
+                <span class="metric-icon">💧</span>
+                <div class="metric-info">
+                    <p class="metric-label">Влажность</p>
+                    <p class="metric-value"><span id="humidity">--</span>%</p>
+                </div>
+            </div>
+            <div class="metric-item">
+                <span class="metric-icon">💨</span>
+                <div class="metric-info">
+                    <p class="metric-label">Ветер</p>
+                    <p class="metric-value"><span id="wind">--</span> км/ч</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Блок прогноза на 3 дня -->
+        <div class="forecast-section">
+            <h3>Прогноз на 3 дня</h3>
+            <div class="forecast-container" id="forecast-container">
+                <!-- Сюда JS вставит карточки дней -->
             </div>
         </div>
     </div>
 
-    <!-- Подключаем нашу логику JavaScript -->
     <script src="app.js"></script>
 </body>
 </html>
