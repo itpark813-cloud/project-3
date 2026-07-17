@@ -3,41 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NexGen Weather API Control</title>
+    <title>Умный Мониторинг Погоды</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+    <!-- Фоновые неоновые сферы -->
     <div class="bg-circles">
         <div class="circle c1"></div>
         <div class="circle c2"></div>
     </div>
 
     <div class="weather-card" id="weather-card">
-        <!-- Поле поиска -->
+        <!-- Поисковая панель -->
         <div class="search-container">
             <input type="text" id="city-input" placeholder="Введите город (например: Urganch)..." autocomplete="off">
             <button id="search-btn">🔍</button>
         </div>
 
-        <!-- Экстренное предупреждение от ИИ (появляется при >40°C) -->
+        <!-- Смарт-баннер критической жары -->
         <div class="alert-banner" id="alert-banner" style="display: none;">
             <span class="alert-icon">⚠️</span>
-            <p id="alert-text">Внимание: зафиксированы опасные атмосферные условия!</p>
+            <p id="alert-text">Внимание: зафиксированы экстремальные температурные показатели!</p>
         </div>
 
-        <!-- Главный экран погоды -->
-        <div class="main-weather animate-fade">
+        <!-- Главный информационный блок -->
+        <div class="main-weather">
             <div id="weather-emoji" class="weather-illustration">☀️</div>
             <h1 id="city-name">Загрузка...</h1>
             <div class="temp-display"><span id="temperature">--</span>°C</div>
-            <p id="weather-status">Получение данных...</p>
+            <p id="weather-status">Синхронизация с метеоспутником...</p>
         </div>
 
-        <!-- Умный виджет Ультрафиолета (UV) -->
+        <!-- Интерактивный виджет УФ-лучей -->
         <div class="uv-widget">
             <div class="uv-header">
-                <span>Индекс УФ-лучей: <strong id="uv-val">0</strong></span>
+                <span>Индекс УФ-активности: <strong id="uv-val">0</strong></span>
                 <span id="uv-level" class="badge-uv">--</span>
             </div>
             <div class="uv-bar-container">
@@ -45,12 +46,12 @@
             </div>
         </div>
 
-        <!-- Сетка продвинутых метрик из API -->
+        <!-- Сетка дополнительных параметров -->
         <div class="metrics-grid">
             <div class="metric-item">
                 <span class="metric-icon">🔥</span>
                 <div class="metric-info">
-                    <p class="metric-label">Тепловой индекс</p>
+                    <p class="metric-label">Ощущается как</p>
                     <p class="metric-value"><span id="heat-index">--</span>°C</p>
                 </div>
             </div>
@@ -64,16 +65,16 @@
             <div class="metric-item">
                 <span class="metric-icon">💨</span>
                 <div class="metric-info">
-                    <p class="metric-label">Ветер</p>
-                    <p class="metric-value"><span id="wind">--</span> км/ч</p>
+                    <p class="metric-label">Скорость ветра</p>
+                    <p class="metric-value"><span id="wind">--</span></p>
                 </div>
             </div>
         </div>
 
-        <!-- Интерактивный советник по выживанию -->
+        <!-- Рекомендации ИИ-ассистента -->
         <div class="advisor-box">
-            <div class="advisor-title">🤖 Рекомендация ИИ-Смотрителя:</div>
-            <p id="advisor-content">Анализирую погодные условия для составления рекомендаций...</p>
+            <div class="advisor-title">🤖 Аналитика ИИ-Смотрителя:</div>
+            <p id="advisor-content">Вычисляю оптимальные рекомендации для текущей локации...</p>
         </div>
     </div>
 
