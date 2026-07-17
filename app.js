@@ -1,19 +1,24 @@
-// Константы для интеграции с твоим WeatherAPI
-const API_KEY = "0101d8e61bc04c7fb9580547251103";
 const DEFAULT_CITY = "Urganch";
 
-// 1. Фишка: Умный переводчик сложных направлений ветра с английского на русский
-function translateWindDir(dir) {
-    const directions = {
-        'N': 'С', 'S': 'Ю', 'E': 'В', 'W': 'З',
-        'NE': 'СВ', 'NW': 'СЗ', 'SE': 'ЮВ', 'SW': 'ЮЗ',
-        'NNE': 'ССВ', 'NNW': 'ССЗ', 'SSE': 'ЮЮВ', 'SSW': 'ЮЮЗ',
-        'ENE': 'ВСВ', 'ESE': 'ВЮВ', 'WNW': 'ЗСЗ', 'WSW': 'ЗЮЗ'
-    };
-    return directions[dir] || dir;
+// 1. Фишка: Перевод градусов направления ветра в понятные буквы (ССЗ, ЮВ и т.д.)
+function getWindDirection(deg) {
+    const directions = ['С', 'ССВ', 'СВ', 'ВСВ', 'В', 'ВЮВ', 'ЮВ', 'ЮЮВ', 'Ю', 'ЮЮЗ', 'ЮЗ', 'ЗЮЗ', 'З', 'ЗСЗ', 'СЗ', 'ССЗ'];
+    const val = Math.floor((deg / 22.5) + 0.5);
+    return directions[val % 16];
 }
 
-// 2. Фишка: Расчет уровня опасности УФ-излучения для прогресс-бара
+// 2. Фишка: Интерпретация кодов погоды в понятный текст и эмодзи
+function parseWeatherCode(code) {
+    if (code === 0) return { text: "Ясно / Солнечно", emoji: "☀️" };
+    if ([1, 2, 3].includes(code)) return { text: "Переменная облачность", emoji: "⛅" };
+    if ([45, 48].includes(code)) return { text: "Туман", emoji: "🌫️" };
+    if ([51, 53, 55, 80, 81, 82].includes(code)) return { text: "Дождь / Ливень", emoji: "🌧️" };
+    if ([71, 73, 75, 85, 86].includes(code)) return { text: "Снег", emoji: "❄️" };
+    if ([95, 96, 99].includes(code)) return { text: "Гроза", emoji: "⛈️" };
+    return { text: "Ясно", emoji: "☀️" };
+}
+
+// 3. Фишка: Расчет опасности УФ-лучей для шкалы
 function getUvStatus(uvIndex) {
     if (uvIndex <= 2) return { text: "Низкий", color: "#2ecc71" };
     if (uvIndex <= 5) return { text: "Умеренный", color: "#f1c40f" };
@@ -22,104 +27,121 @@ function getUvStatus(uvIndex) {
     return { text: "Экстремальный", color: "#9b59b6" };
 }
 
-// 3. Фишка: Генератор динамических рекомендаций на основе живых данных
+// 4. Фишка: Динамические ИИ-рекомендации
 function generateAdvice(temp, uv, humidity) {
     const uvStatus = getUvStatus(uv).text;
     if (temp >= 40) {
-        return `⚠️ Экстремальная жара! Температура воздуха ${temp}°C. Солнечная активность опасна (УФ-индекс: ${uvStatus}). Настоятельно рекомендуем оставаться в тени или помещении, пить больше чистой воды. Влажность воздуха составляет всего ${humidity}%.`;
+        return `⚠️ Экстремальная жара! Температура ${temp}°C. Солнце опасно (УФ: ${uvStatus}). Настоятельно рекомендуем оставаться в помещении и пить больше воды. Влажность воздуха: ${humidity}%.`;
     } else if (temp >= 30) {
-        return `Летний зной. Температура ${temp}°C, солнце жарит ощутимо. Наденьте головной убор, возьмите солнцезащитные очки и не забывайте про SPF-крем.`;
+        return `Летний зной (${temp}°C). Наденьте головной убор и используйте солнцезащитный крем SPF.`;
     } else if (temp < 15) {
-        return `На улице прохладно (${temp}°C). Стоит одеться потеплее. Влажность воздуха — ${humidity}%.`;
+        return `На улице прохладно (${temp}°C). Советуем одеться потеплее. Влажность — ${humidity}%.`;
     }
-    return `Погода отличная (${temp}°C)! Прекрасное время для прогулок на свежем воздухе. УФ-активность: ${uvStatus}.`;
+    return `Погода отличная (${temp}°C)! Прекрасное время для прогулки. УФ-индекс: ${uvStatus}.`;
 }
 
-// Главная функция: запрос к твоему API сервису
-async function fetchWeatherData(city) {
-    const url = `https://api.weatherapi.com/v1/current.json?key=${API_KEY}&q=${encodeURIComponent(city)}&aqi=no`;
-    
+// Главная функция получения погоды (Без ключей и без CORS)
+async function fetchWeather(cityName) {
     try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error("Город не найден в базе данных weatherapi");
+        // Шаг 1: Геокодинг — находим координаты города по его названию
+        const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=ru&format=json`;
+        const geoResponse = await fetch(geoUrl);
+        const geoData = await geoResponse.json();
+
+        if (!geoData.results || geoData.results.length === 0) {
+            alert("Город не найден! Проверьте раскладку.");
+            return;
         }
+
+        const { latitude, longitude, name } = geoData.results[0];
+
+        // Шаг 2: Запрос самой погоды по точным координатам
+        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,uv_index&wind_speed_unit=ms`;
+        const response = await fetch(weatherUrl);
         const data = await response.json();
-        updateWeatherUI(data);
+
+        updateWeatherUI(name, data.current);
     } catch (error) {
-        console.error("Ошибка запроса к WeatherAPI:", error);
-        alert("Не удалось загрузить данные для города: " + city);
+        console.error("Ошибка получения данных:", error);
+        alert("Не удалось загрузить погоду. Проверьте интернет-соединение.");
     }
 }
 
-// Распределение реальных данных по HTML элементам
-function updateWeatherUI(data) {
-    const current = data.current;
-    const location = data.location;
-
-    // Основные текстовые поля
-    document.getElementById("city-name").innerText = location.name;
-    document.getElementById("temperature").innerText = Math.round(current.temp_c);
+// Заполнение твоего HTML живыми данными
+function updateWeatherUI(cityName, current) {
+    // Температура, город, статус
+    document.getElementById("city-name").innerText = cityName;
     
-    // Переводим статус погоды или оставляем оригинальный текст
-    let statusText = current.condition.text;
-    if (statusText === "Sunny") statusText = "Ясно / Солнечно";
-    if (statusText === "Clear") statusText = "Чистое небо";
-    document.getElementById("weather-status").innerText = statusText;
+    const temp = Math.round(current.temperature_2m);
+    document.getElementById("temperature").innerText = temp;
 
-    // Влажность и Ветер (с автопереводом направления)
-    document.getElementById("humidity").innerText = current.humidity;
-    const readableDir = translateWindDir(current.wind_dir);
-    document.getElementById("wind").innerText = `${current.wind_kph} км/ч (${readableDir})`;
+    const weatherInfo = parseWeatherCode(current.weather_code);
+    document.getElementById("weather-status").innerText = weatherInfo.text;
+    
+    if (document.getElementById("weather-emoji")) {
+        document.getElementById("weather-emoji").innerText = weatherInfo.emoji;
+    }
 
-    // Тепловой индекс (если API не передает его для холодной погоды, страхуемся текущей температурой)
-    const heatIndexVal = current.heatindex_c ? current.heatindex_c : current.temp_c;
-    document.getElementById("heat-index").innerText = Math.round(heatIndexVal);
+    // Влажность и Ветер (переводим м/с в км/ч для соответствия твоему дизайну)
+    const windSpeedKmH = Math.round(current.wind_speed_10m * 3.6);
+    const windDirText = getWindDirection(current.wind_direction_10m);
+    
+    document.getElementById("humidity").innerText = current.relative_humidity_2m;
+    document.getElementById("wind").innerText = `${windSpeedKmH} км/ч (${windDirText})`;
 
-    // Фишка: Настройка прогресс-бара УФ-индекса
-    const uvValue = current.uv;
+    // Тепловой индекс (в Open-Meteo это apparent_temperature — то, как температура ощущается телом)
+    document.getElementById("heat-index").innerText = Math.round(current.apparent_temperature);
+
+    // УФ-Индекс и управление шкалой
+    const uvValue = current.uv_index || 0;
     const uvInfo = getUvStatus(uvValue);
-    document.getElementById("uv-val").innerText = uvValue;
+    
+    document.getElementById("uv-val").innerText = uvValue.toFixed(1);
     
     const uvBadge = document.getElementById("uv-level");
-    uvBadge.innerText = uvInfo.text;
-    uvBadge.style.backgroundColor = uvInfo.color;
+    if (uvBadge) {
+        uvBadge.innerText = uvInfo.text;
+        uvBadge.style.backgroundColor = uvInfo.color;
+    }
 
-    // Вычисляем ширину шкалы УФ (максимум берем за 11+ единиц)
-    const uvPercentage = Math.min((uvValue / 11) * 100, 100);
-    document.getElementById("uv-fill").style.width = `${uvPercentage}%`;
+    // Движение заполнения прогресс-бара УФ
+    const uvFill = document.getElementById("uv-fill");
+    if (uvFill) {
+        const uvPercentage = Math.min((uvValue / 11) * 100, 100);
+        uvFill.style.width = `${uvPercentage}%`;
+    }
 
-    // Фишка: Экстренная огненная тема и баннер при аномальной жаре (>40°C)
+    // Экстренное переключение темы при жаре от 40 градусов
     const cardElement = document.getElementById("weather-card");
     const alertBanner = document.getElementById("alert-banner");
     
-    if (current.temp_c >= 40) {
-        cardElement.classList.add("theme-extreme-hot");
-        alertBanner.style.display = "flex";
+    if (temp >= 40) {
+        if (cardElement) cardElement.classList.add("theme-extreme-hot");
+        if (alertBanner) alertBanner.style.display = "flex";
     } else {
-        cardElement.classList.remove("theme-extreme-hot");
-        alertBanner.style.display = "none";
+        if (cardElement) cardElement.classList.remove("theme-extreme-hot");
+        if (alertBanner) alertBanner.style.display = "none";
     }
 
-    // Запись сгенерированного ИИ-совета
-    document.getElementById("advisor-content").innerText = generateAdvice(current.temp_c, uvValue, current.humidity);
+    // Вывод умной рекомендации
+    if (document.getElementById("advisor-content")) {
+        document.getElementById("advisor-content").innerText = generateAdvice(temp, uvValue, current.relative_humidity_2m);
+    }
 }
 
-// Обработка событий поиска
+// Слушатели для интерактивного поиска
 document.getElementById("search-btn").addEventListener("click", () => {
     const input = document.getElementById("city-input");
-    if (input.value.trim() !== "") {
-        fetchWeatherData(input.value.trim());
-    }
+    if (input.value.trim() !== "") fetchWeather(input.value.trim());
 });
 
 document.getElementById("city-input").addEventListener("keypress", (e) => {
     if (e.key === "Enter" && e.target.value.trim() !== "") {
-        fetchWeatherData(e.target.value.trim());
+        fetchWeather(e.target.value.trim());
     }
 });
 
-// Первичный запуск — сразу выводим честный Ургенч
+// Запуск приложения: сразу загружаем реальную погоду
 document.addEventListener("DOMContentLoaded", () => {
-    fetchWeatherData(DEFAULT_CITY);
+    fetchWeather(DEFAULT_CITY);
 });
